@@ -1,0 +1,256 @@
+<?
+$this->load->view('templates/header');
+$this->load->view('templates/menu_admin');
+?>
+<div class="content-wrapper">
+	<section class="content-header">
+		<? echo $judul; ?>
+	</section>
+
+	<section class="content">
+		<div id="perhatian"></div>
+		<div class="row">
+			<div class="col-xs-12">
+				<div class="box box-success">
+					<div class="box-body">
+						<form action="#" class="horizontal-form" id="form1">
+							<div class="row">
+								<div class="col-md-6">
+									<div class="row">
+										<div class="col-md-12">
+											<div class="form-group">
+												<label class="control-label">Nomor Resi</label>
+												<? echo form_input(array('name' => 'no_resi', 'id' => 'no_resi', 'class' => 'form-control', 'type' => 'text', 'placeholder' => 'Nomor Resi', 'required' => 'required')); ?>
+											</div>
+										</div>
+									</div>
+									<div class="row">
+										<div class="col-md-6">
+											<div class="form-group">
+												<label class="control-label">Tgl. Masuk</label>
+												<div class='input-group date tanggal1'>
+													<input type='text' class="form-control" name="tgl_masuk" id="tgl_masuk" readonly />
+													<span class="input-group-addon">
+														<span class="glyphicon glyphicon-calendar"></span>
+													</span>
+												</div>
+											</div>
+										</div>
+										<div class="col-md-6">
+											<div class="form-group">
+												<label class="control-label">Jenis Paket</label>
+												<select class="form-control select2" style="width: 100%;" id="kd_paket" name="kd_paket" required></select>
+											</div>
+										</div>
+									</div>
+									<div class="row">
+										<div class="col-md-12">
+											<div class="form-group">
+												<label class="control-label">Nama Penerima</label>
+												<? echo form_input(array('name' => 'nama', 'id' => 'nama', 'class' => 'form-control', 'type' => 'text', 'placeholder' => 'Nama Penerima', 'required' => 'required')); ?>
+											</div>
+										</div>
+									</div>
+									<div class="row">
+										<div class="col-md-12">
+											<div class="form-group">
+												<label class="control-label">Nomor HP</label>
+												<? echo form_input(array('name' => 'hp', 'id' => 'hp', 'class' => 'form-control', 'type' => 'text', 'placeholder' => 'Nomor HP')); ?>
+											</div>
+										</div>
+									</div>
+									<div class="row">
+										<div class="col-md-12">
+											<div class="form-group">
+												<label class="control-label">Alamat</label>
+												<? echo form_input(array('name' => 'alamat', 'id' => 'alamat', 'class' => 'form-control', 'type' => 'text', 'placeholder' => 'Alamat')); ?>
+											</div>
+										</div>
+									</div>
+									<div class="row">
+										<div class="col-md-12">
+											<a href="javascript:void()" onClick="linked('paket/masuk')" class="btn btn-default"><span class="glyphicon glyphicon-chevron-left"></span> Kembali</a>
+											<button id="btn_simpan" type="submit" class="btn btn-primary"><i class="fa fa-save"></i> Simpan</button>
+										</div>
+									</div>
+								</div>
+								<div class="col-md-6">
+									<br>
+									<div id="camera">Capture</div>
+									<br>
+									<div id="webcam">
+										<button type="button" class="btn btn-success" onClick="preview()"><i class="fa fa-camera"></i> Ambil Gambar</button>
+									</div>
+									<div id="simpan" style="display:none">
+										<button onClick="batal()" class="btn btn-warning"><i class="fa fa-undo"></i> Batal</button>
+									</div>
+									<br>
+									<div id="hasil"></div>
+								</div>
+							</div>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+</div>
+<?
+$this->load->view('templates/javascript');
+echo script_tag('assets/js/webcam.js');
+?>
+
+<script>
+	$().ready(function() {
+		Webcam.set({
+            width: 320,
+            height: 240,
+            image_format: 'jpg',
+            jpeg_quality: 100
+        });
+        Webcam.attach( '#camera' );
+		
+		$('#no_resi').focus();
+		$('.select2').select2();
+		tampilSelect('kd_paket');
+		$('.tanggal1').datetimepicker({format: 'DD/MM/YYYY',ignoreReadonly: true});
+		$('#form1').submit(function(e) {
+			e.preventDefault();
+			var image = "";
+			var resi = $('#no_resi').val();
+			var tgl = $('#tgl_masuk').val();
+			var paket = $('#kd_paket').val();
+			var nama = $('#nama').val();
+			var handphone = $('#hp').val();
+			var alamat = $('#alamat').val();
+			Webcam.snap( function(data_uri) {
+				image = data_uri;
+			});
+			bootbox.confirm(bootAtt(1, "Apakah ingin menyimpan data ini?"), function(result) {
+				if (result) {
+					$.ajax({
+						url: base + "paket/masuk/simpan",
+						type: "POST",
+						dataType: "JSON",
+						data: {rs:resi, tg: tgl, pk: paket, nm: nama, hp:handphone, al:alamat, photo:image},
+						success: function(data) {
+							if (data.status == 1) {
+								idPerhatian("1", data.ket);
+								clear_data();
+							} else {
+								idPerhatian("0", data.ket);
+							}
+							$('html, body').animate({
+								scrollTop: $("html, body").offset().top
+							}, 1000);
+						},
+						error: function(jqXHR, exception) {
+							var msg = '';
+							if (jqXHR.status === 0) {
+								msg = 'Not Connect.\n Verify Network';
+							} else if (jqXHR.status == 404) {
+								msg = 'Requested page not found [404]';
+							} else if (jqXHR.status == 500) {
+								msg = 'Internal Server Error [500]';
+							} else if (exception === 'parsererror') {
+								msg = 'Requested JSON parse failed';
+							} else if (exception === 'timeout') {
+								msg = 'Time out error';
+							} else if (exception === 'abort') {
+								msg = 'Ajax request aborted';
+							} else {
+								msg = 'Uncought Error.\n' + jqXHR.responseText;
+							}
+							bootbox.alert(bootAtt(0, msg));
+						},
+					});
+				}
+			});
+		});
+
+		ajax_data();
+	});
+	
+	function ajax_data() {
+		$.ajax({
+			url: base + "tampil",
+			type: "GET",
+			dataType: "JSON",
+			success: function(data) {
+				$('#kd_paket').html(data.ref_paket);
+				$('#tgl_masuk').val(data.today);
+			},
+			error: function(jqXHR, exception) {
+				var msg = '';
+				if (jqXHR.status === 0) {
+					msg = 'Not Connect.\n Verify Network';
+				} else if (jqXHR.status == 404) {
+					msg = 'Requested page not found [404]';
+				} else if (jqXHR.status == 500) {
+					msg = 'Internal Server Error [500]';
+				} else if (exception === 'parsererror') {
+					msg = 'Requested JSON parse failed';
+				} else if (exception === 'timeout') {
+					msg = 'Time out error';
+				} else if (exception === 'abort') {
+					msg = 'Ajax request aborted';
+				} else {
+					msg = 'Uncought Error.\n' + jqXHR.responseText;
+				}
+				bootbox.alert(bootAtt(0, msg));
+			}
+		});
+	}
+
+	function tampilSelect(uraian) {
+		$('#' + uraian).select2({
+			placeholder: "--- Pilih ---",
+			allowClear: true,
+			formatResult: format,
+			formatSelection: format,
+			escapeMarkup: function(m) {
+				return m;
+			}
+		});
+	}
+
+	function format(state) {
+		if (!state.id) return state.text;
+		return state.text;
+	}
+
+	function clear_data() {
+		$('#nama').val("");
+		$('#alamat').val("");
+		$('#hp').val("");
+		$('#kd_paket').html("");
+		$('#no_resi').val("");
+		batal();
+		ajax_data();
+	}
+	
+	function preview() {
+		Webcam.freeze();
+		document.getElementById('webcam').style.display = 'none';
+		document.getElementById('simpan').style.display = '';
+		
+		Webcam.snap( function(data_uri) {
+			document.getElementById('hasil').innerHTML = '<img id="imagediv" src="' + data_uri +'"/>';
+			//document.getElementById('hasil').innerHTML = '<textarea>'+ data_uri +'</textarea>';
+		}); 
+	}
+	
+	function batal() {
+		Webcam.unfreeze();
+		document.getElementById('webcam').style.display = '';
+		document.getElementById('simpan').style.display = 'none';
+		document.getElementById('hasil').innerHTML = '';
+	}
+
+	function akses_error() {
+		bootbox.alert(bootAtt(0, "Anda tidak mempunyai akses untuk menu ini!"));
+	}
+</script>
+</body>
+
+</html>
