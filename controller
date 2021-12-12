@@ -1,0 +1,58 @@
+<?php if (!defined('BASEPATH')) exit('No direct script access allowed');
+
+class Barangmasuk extends CI_Controller
+{
+	public function __construct()
+	{
+		parent::__construct();
+		$this->akses->aktif();
+		$this->load->model('m_barang');
+	}
+
+	public function index()
+	{
+		$identitas = array('judul' => '<h1>Paket Masuk </h1><span class="pull-right"><a href="#" onClick="linked(\'paket/masuk/tambah\')" class="btn btn-sm btn-success"><i class="fa fa-plus"></i> Tambah Data</a></span><br>');
+		$this->load->view('v_masuk', $identitas);
+	}
+
+	function display()
+	{
+		$this->m_barang->tampil();
+	}
+
+	function hapus()
+	{
+		$this->m_barang->delete();
+	}
+
+	function sessi()
+	{
+		$this->akses->sessi('tab_data');
+	}
+
+	function edit()
+	{
+		$identitas = array('judul' => '<h1><a href="' . base_url('paket/masuk') . '">Paket Masuk</a> | <small>Edit Data</small></h1>');
+		$this->load->view('v_masuk_edit', $identitas);
+	}
+	
+	function tambah()
+	{
+		$identitas = array('judul' => '<h1><a href="' . base_url('paket/masuk') . '">Paket Masuk</a> | <small>Tambah Data</small></h1>');
+		$this->load->view('v_masuk_tambah', $identitas);
+	}
+
+	function edit_list()
+	{
+		$this->m_barang->edit();
+	}
+
+	function update()
+	{
+		$this->m_barang->update();
+	}
+	function simpan(){
+		$this->m_barang->insert();
+	}
+		
+}
