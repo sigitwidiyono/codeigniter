@@ -1,0 +1,169 @@
+<?php if (!defined('BASEPATH')) exit('No direct script access allowed');
+
+class M_barang extends CI_Model
+{
+	var $id = 'id';
+	var $table = 'tab_data';
+	var $column = array('id', 'paket', 'tgl_masuk', 'no_resi', 'nama', 'alamat');
+	var $order = array('id' => 'desc');
+
+	public function __construct()
+	{
+		parent::__construct();
+	}
+
+	private function _get_datatables_query()
+	{
+		$this->db->from($this->table);
+		$this->db->select('tab_data.id, tab_data.no_resi, tab_data.nama, tab_data.hp, tab_data.alamat, tab_data.keterangan, tab_data.photo, tab_data.kd_paket, ref_paket.paket');
+		$this->db->join('ref_paket', 'tab_data.kd_paket=ref_paket.kd_paket', 'left');
+		$i = 0;
+
+		foreach ($this->column as $item) {
+			if ($_POST['search']['value']) ($i === 0) ? $this->db->like($item, $_POST['search']['value']) : $this->db->or_like($item, $_POST['search']['value']);
+			$column[$i] = $item;
+			$i++;
+		}
+
+		if (isset($_POST['order'])) {
+			$this->db->order_by($column[$_POST['order']['0']['column']], $_POST['order']['0']['dir']);
+		} else if (isset($this->order)) {
+			$order = $this->order;
+			$this->db->order_by(key($order), $order[key($order)]);
+		}
+	}
+
+	function get_datatables()
+	{
+		$this->_get_datatables_query();
+		if ($_POST['length'] != -1)
+			$this->db->limit($_POST['length'], $_POST['start']);
+		$query = $this->db->get();
+		return $query->result();
+	}
+
+	function count_filtered()
+	{
+		$this->_get_datatables_query();
+		$query = $this->db->get();
+		return $query->num_rows();
+	}
+
+	public function count_all()
+	{
+		$this->db->from($this->table);
+		$this->db->select('tab_data.id, tab_data.no_resi, tab_data.nama, tab_data.hp, tab_data.alamat, tab_data.keterangan, tab_data.photo, tab_data.kd_paket, ref_paket.paket');
+		$this->db->join('ref_paket', 'tab_data.kd_paket=ref_paket.kd_paket', 'left');
+		return $this->db->count_all_results();
+	}
+
+	function tampil()
+	{
+		$list = $this->get_datatables();
+		$data = array();
+		$no = $_POST['start'];
+		foreach ($list as $rowx) {
+			$row = array();
+			$no++;
+			$row[] = '<div class="text-center">
+				<a class="btn btn-xs btn-success" title="Edit Data" href="javascript:void()" onclick="edit_data(' . $rowx->id . ')"><i class="fa fa-pencil"></i></a>
+				<a class="btn btn-xs btn-warning" title="Lihat Data" href="javascript:void()" onclick="lihat_data(' . $rowx->id . ')"><i class="fa fa-search"></i></a>
+				<a class="btn btn-xs btn-danger" title="Hapus Data" href="javascript:void()" onclick="hapus_data('.$rowx->id.')"><i class="fa fa-trash"></i></a>
+			</div>';
+			$row[] = '<div class="text-right">'.$no.'</div>';
+			$row[] = '<div style="text-align:center"><img src="' . base_url('timthumb.php?') . 'src=' . $pho . '&w=80&h=60&f=3&q=100" alt="Photo Dokumen"></div>';
+			$row[] = $rowx->no_resi.'<br>'.$rowx->tgl_masuk.'<br>'.$rowx->paket;
+			$row[] = $rowx->nama.'<br><i class="fa fa-phone"></i> '.$rowx->hp;
+			$row[] = $rowx->alamat;
+			$data[] = $row;
+		}
+
+		$output = array(
+			"draw" => $_POST['draw'],
+			"recordsTotal" => $this->count_all(),
+			"recordsFiltered" => $this->count_filtered(),
+			"data" => $data
+		);
+		echo json_encode($output);
+	}
+
+	function delete()
+	{
+		$id = $this->input->post('hapus_id', TRUE);
+		$sql = $this->akses->getById($this->table, $id);
+		if ($sql) {
+			$this->db->where(array('id' => $id));
+			$this->db->delete($this->table);
+			$data = array('status' => 1, 'ket' => hapus(1));
+			header('Content-Type: application/json');
+			echo json_encode($data);
+		} else {
+			$data = array('status' => 0, 'ket' => hapus(0));
+			header('Content-Type: application/json');
+			echo json_encode($data);
+		}
+	}
+
+	function edit()
+	{
+		$id = $this->session->userdata('referensi_id');
+		$sql = $this->akses->getById($this->table, $id);
+		if ($sql) {
+			$data = array('status' => 1, 'paket' => $sql->paket, 'kd_paket' => $sql->kd_paket, 'ket' => ditemukan(1));
+			header('Content-Type: application/json');
+			echo json_encode($data);
+		} else {
+			$data = array('status' => 0, 'ket' => ditemukan(0));
+			header('Content-Type: application/json');
+			echo json_encode($data);
+		}
+	}
+
+	function update()
+	{
+		$id = $this->session->userdata('referensi_id');
+		$sql = $this->akses->getById($this->table, $id);
+		if ($sql) {
+			$paket = $this->input->post('paket', TRUE);
+			$simpan = array('paket' => $paket);
+			$this->db->where(array('id' => $id));
+			$this->db->update($this->table, $simpan);
+			$data = array('status' => 1, 'ket' => simpan(1));
+			header('Content-Type: application/json');
+			echo json_encode($data);
+		} else {
+			$data = array('status' => 0, 'ket' => simpan(0));
+			header('Content-Type: application/json');
+			echo json_encode($data);
+		}
+	}
+
+	function insert()
+	{
+		$no_resi = $this->input->post('rs', TRUE);
+		$tgl_masuk = $this->input->post('tg', TRUE);
+		$jenis_paket = $this->input->post('pk', TRUE);
+		$nama = $this->input->post('nm', TRUE);
+		$hp = $this->input->post('hp', TRUE);
+		$alamat = $this->input->post('al', TRUE);
+		$image = $this->input->post('photo');		
+		if($no_resi == null || $tgl_masuk == null || $nama  == null || $jenis_paket == null || $image == null ){
+			$data = ['status' => 0, 'ket' => simpan(0), 'image' => $image];
+		} else {
+			$tgl_masuk = ctod($tgl_masuk);
+			$ix = explode(",",$image);
+			$b64 = $ix[1];
+			$bin = base64_decode($b64);
+			$im = imageCreateFromString($bin);
+			if(!$im){
+				$data = ['status' => 1, 'ket' => simpan(0)];
+			} else {
+				$filename = 'dok_'.date('YmdHis').'.png';
+				file_put_contents(FCPATH.'/dokumen/'.$filename, $im);
+				$data = ['status' => 1, 'ket' => simpan(1)];
+			}
+		}
+		header('Content-Type: application/json');
+		echo json_encode($data);	
+	}
+}
